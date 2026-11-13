@@ -1,31 +1,38 @@
-# Intern Assignment
+# ShopAssist — support copilot cost lab
 
-This repository contains two independent assignment questions. Each solution lives in its own directory with its own README that explains the architecture, algorithms, technology choices and trade-offs, plus a generated report covering every required scenario.
+**ShopAssist** is a Tier-1 support agent for an e-commerce company. For each ticket it:
 
-| Question | Topic | Solution | Scenario run |
-|----------|--------|----------|--------------|
-| [Question 1](questions/question-1-image-catalog.md) | Image catalog, object detection, metadata, composite image generation | [question1/](question1/README.md) | [question1/examples/REPORT.md](question1/examples/REPORT.md) |
-| [Question 2](questions/question-2-duplicate-questions.md) | AI question generation and duplicate prevention | [question2/](question2/README.md) | [question2/examples/REPORT.md](question2/examples/REPORT.md) |
+1. Reads the customer thread (`data/tickets/`)
+2. Loads order facts (`data/orders/` via `shared/tools.py`)
+3. Picks an action (`REFUND`, `REPLACE`, `SEND_ARTICLE`, `ESCALATE_TIER2`)
+4. Cites the help-center article that backs the decision (`data/kb/`)
 
-## Setup (both questions)
+| Track | Code | Spec |
+|-------|------|------|
+| Q1 — single call | [question1/agent.py](question1/agent.py) | [questions/question-1.md](questions/question-1.md) |
+| Q2 — pipeline | [question2/agent.py](question2/agent.py) | [questions/question-2.md](questions/question-2.md) |
 
-Python 3.11. One virtual environment at the repository root serves both questions:
-
-```bash
-uv venv .venv --python 3.11
-uv pip install --python .venv/Scripts/python.exe --index-url https://download.pytorch.org/whl/cpu torch torchvision   # or a CUDA build
-uv pip install --python .venv/Scripts/python.exe -r question1/requirements.txt -r question2/requirements.txt
-```
-
-(On Linux/macOS use `.venv/bin/python`.) Hosted LLM steps use OpenRouter. Put `OPENROUTER_API_KEY=...` in the environment or in a `.env` file at the repository root; it is git-ignored. Both solutions also run without a key, with deterministic fallbacks, and their test suites never call the network LLM.
+## Run
 
 ```bash
-cd question1 && python -m pytest -q tests && python scripts/run_scenarios.py
-cd question2 && python -m pytest -q tests && python scripts/run_demo.py
+pip install -r requirements.txt
+pytest -q
+python question1/run.py
+python question2/run.py
 ```
 
-## Submission
+`shared/llm.py` provides a local `LlmClient` with the same billing accounting you would use against a hosted chat API. Do not import `eval/reference.py` from your agent.
 
-- Provide working code for each question you attempt.
-- Include explanations of architecture, algorithms, technology choices, and trade-offs.
-- Include examples that demonstrate the required scenarios listed in each question.
+## Billing
+
+| Input | Cached input | Output |
+|------:|-------------:|-------:|
+| 3 | 0.3 | 15 |
+
+Cached input = identical prefix ≥ 1024 tokens across calls.
+
+```
+points = uncached_input × 3 + cached_input × 0.3 + output × 15
+```
+
+Per-call details are in `shared/billing.py` (`CostSession` on your agent).
