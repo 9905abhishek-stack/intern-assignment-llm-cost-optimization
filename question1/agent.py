@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import uuid
 from dataclasses import dataclass
 
 from shared.billing import CostSession
@@ -58,19 +57,15 @@ class SupportCopilot:
         ticket = get_ticket(ticket_id)
         order = get_order(ticket["order_id"])
         thread = format_thread(ticket)
-        snapshot = json.dumps(order, indent=2)
+        snapshot = json.dumps(order)
 
         system = "\n\n".join(
             [
-                f"Run id {uuid.uuid4()}",
                 "You are ShopAssist, the Tier-1 customer support copilot.",
-                _FEW_SHOT,
+                _FEW_SHOT.strip(),
                 "HELP CENTER:",
                 all_articles_blob(),
-                (
-                    "Instructions: Think step by step. Write full reasoning, quote any article "
-                    "you rely on, then output JSON with action, kb_article, customer_reply."
-                ),
+                "Output JSON with action, kb_article, customer_reply.",
             ]
         )
         user = "\n\n".join(
@@ -84,5 +79,6 @@ class SupportCopilot:
 
     def handle_ticket(self, ticket_id: str) -> TicketResolution:
         messages = self.build_messages(ticket_id)
-        completion = self.llm.chat("handle_ticket", messages)
+        cached_prefix = f"SYSTEM:\n{messages[0].content}"
+        completion = self.llm.chat("handle_ticket", messages, cached_prefix=cached_prefix)
         return parse_resolution(completion)
