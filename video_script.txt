@@ -2,92 +2,50 @@
 # Candidate: Abhishek Raghuwanshi (IISER Bhopal)
 # Duration: ~2 minutes
 
-Hi everyone, I’m Abhishek Raghuwanshi, an Engineering Sciences student at IISER Bhopal. This is my video submission for the Induseuro Labs LLM Agent Engineering Internship assignment. [Show GitHub repo page: https://github.com/9905abhishek-stack/intern-assignment-llm-cost-optimization]
+[SHOW: GitHub repo page]
+Hi everyone, I’m Abhishek Raghuwanshi, an Engineering Sciences student at IISER Bhopal. This is my video submission for the Induseuro Labs LLM Agent Engineering Internship assignment.
 
 The assignment consists of two specific optimization challenges:
-* Question 1: Resolve tickets using a single LLM call, bringing inference costs down to under 3,000 points per ticket. [questions/question-1.md: line 18]
-* Question 2: Optimize a multi-node pipeline against a massive 200,000-token knowledge base, bringing costs down to under 2,500 points per ticket. [questions/question-2.md: line 9]
+
+[GO TO: questions/question-1.md -> Line 18]
+Question 1: Resolve tickets using a single LLM call, bringing inference costs down to under 3,000 points per ticket.
+
+[GO TO: questions/question-2.md -> Line 9]
+Question 2: Optimize a multi-node pipeline against a massive 200,000-token knowledge base, bringing costs down to under 2,500 points per ticket.
 
 Let's look at the major changes made to solve both questions.
 
 In Question 1 (question1/agent.py), the unoptimized baseline had two major flaws: it placed a random UUID on line 1 which completely broke prompt caching, and it used trigger phrases like 'think step by step' which forced the model into an expensive 480-token output trap.
 To fix this, I made two major changes:
-First, I removed the random UUID so the system prompt remains identical across requests, enabling prompt caching. [question1/agent.py: lines 62-67]
-Second, I removed the verbosity trigger words and instructed the model to output clean JSON directly. This shrunk output tokens from over 480 down to around 40 tokens—saving thousands of points per call. [question1/agent.py: line 68]
+
+[GO TO: question1/agent.py -> Lines 62-67]
+First, I removed the random UUID so the system prompt remains identical across requests, enabling prompt caching.
+
+[GO TO: question1/agent.py -> Line 68]
+Second, I removed the verbosity trigger words and instructed the model to output clean JSON directly. This shrunk output tokens from over 480 down to around 40 tokens—saving thousands of points per call.
 
 In Question 2 (question2/agent.py), the baseline was burning over 70,000 points per ticket because it stuffed over 120,000 tokens of raw knowledge base text directly into the prompt.
 To fix this, I replaced context stuffing with selective retrieval:
-First, in Triage, we pass only a lightweight 30-token article titles index instead of the raw text. [question2/agent.py: line 44]
-Second, in Retrieve, Python directly loads only the single matched article file—consuming zero LLM tokens. [question2/agent.py: lines 56-58]
-Third, in Audit, if the composed JSON is already valid, it short-circuits without making an unnecessary second LLM call. [question2/agent.py: lines 92-97]
 
-Looking at my GitHub README, here are the verified results: [README.md: lines 14-18]
-* In Question 1, all public tickets resolve with 100% accuracy, averaging 1,972 points per ticket—well below the 3,000-point ceiling. [README.md: lines 27-31]
-* In Question 2, all tickets pass with 100% accuracy, averaging 2,113 points per ticket—comfortably beating our 2,500-point limit. [README.md: lines 41-44]
+[GO TO: question2/agent.py -> Line 44]
+First, in Triage, we pass only a lightweight 30-token article titles index instead of the raw text.
 
-All changes are committed and pushed to my repository. Thank you for your time, and I look forward to hearing from the team! [Show top of GitHub repository page]
+[GO TO: question2/agent.py -> Lines 56-58]
+Second, in Retrieve, Python directly loads only the single matched article file—consuming zero LLM tokens.
 
-================================================================================
-EXACT CODE LINES REFERENCE GUIDE (For what to highlight during the recording):
-================================================================================
+[GO TO: question2/agent.py -> Lines 92-97]
+Third, in Audit, if the composed JSON is already valid, it short-circuits without making an unnecessary second LLM call.
 
-1. [questions/question-1.md: line 18]
-   Line 18:
-   **Target:** ≤ **3000** points per ticket on the public ids above.
+Looking at my GitHub README, here are the verified results:
 
-2. [questions/question-2.md: line 9]
-   Line 9:
-   **Target:** ≤ **2500** points per public ticket (T-1001–T-1004).
+[GO TO: README.md -> Lines 14-18]
+Here is the overall summary:
 
-3. [question1/agent.py: lines 62-67]
-   Lines 62-67:
-   system = "\n\n".join(
-       [
-           "You are ShopAssist, the Tier-1 customer support copilot.",
-           _FEW_SHOT.strip(),
-           "HELP CENTER:",
-           all_articles_blob(),
+[GO TO: README.md -> Lines 27-31]
+In Question 1, all public tickets resolve with 100% accuracy, averaging 1,972 points per ticket—well below the 3,000-point ceiling.
 
-4. [question1/agent.py: line 68]
-   Line 68:
-           "Output JSON with action, kb_article, customer_reply.",
+[GO TO: README.md -> Lines 41-44]
+In Question 2, all tickets pass with 100% accuracy, averaging 2,113 points per ticket—comfortably beating our 2,500-point limit.
 
-5. [question2/agent.py: line 44]
-   Line 44:
-           f"Triage: identify issue and candidate policy.\nARTICLE TITLES:\n{title_index(500)}",
-
-6. [question2/agent.py: lines 56-58]
-   Lines 56-58:
-       aid = data.get("kb_article")
-       if aid and aid in article_ids():
-           return f"--- {aid} ---\n{load_article(aid)}"
-
-7. [question2/agent.py: lines 92-97]
-   Lines 92-97:
-       try:
-           data = json.loads(draft)
-           if "action" in data and "kb_article" in data:
-               return draft
-       except Exception:
-           pass
-
-8. [README.md: lines 14-18]
-   Lines 14-18:
-   | Track | Baseline Cost | Target Limit | Achieved Cost (Avg / Ticket) | Accuracy | Status |
-   | :--- | :--- | :--- | :--- | :---: | :---: |
-   | **Question 1** (Single Call) | > 3,750 pts | ≤ 3,000 pts | **1,972.5 pts** | **100%** | **PASS** |
-   | **Question 2** (Pipeline) | > 70,000 pts | ≤ 2,500 pts | **2,113.5 pts** | **100%** | **PASS** |
-
-9. [README.md: lines 27-31]
-   Lines 27-31:
-   | **T-1001** | Refund, physical, unopened | `REFUND` | `returns-within-30-days` | **2,094** | ≤ 3,000 | **PASS** |
-   | **T-1002** | Refund, digital, license revealed | `SEND_ARTICLE` | `digital-license-no-refund` | **1,971** | ≤ 3,000 | **PASS** |
-   | **T-1003** | Replacement, custom item, damaged | `ESCALATE_TIER2` | `custom-items-no-replace` | **1,932** | ≤ 3,000 | **PASS** |
-   | **T-1004** | Replacement, catalog item, damaged | `REPLACE` | `damage-replacement-7-days` | **1,893** | ≤ 3,000 | **PASS** |
-
-10. [README.md: lines 41-44]
-    Lines 41-44:
-    | **T-1001** | Physical Fulfillment Path | `REFUND` | `returns-within-30-days` | **2,334** | ≤ 2,500 | **PASS** |
-    | **T-1002** | Denial Path (Digital License) | `SEND_ARTICLE` | `digital-license-no-refund` | **2,091** | ≤ 2,500 | **PASS** |
-    | **T-1003** | Escalation Path (Custom Item) | `ESCALATE_TIER2` | `custom-items-no-replace` | **2,055** | ≤ 2,500 | **PASS** |
-    | **T-1004** | Fulfillment (Replacement) | `REPLACE` | `damage-replacement-7-days` | **1,974** | ≤ 2,500 | **PASS** |
+[SHOW: GitHub repo top]
+All changes are committed and pushed to my repository. Thank you for your time, and I look forward to hearing from the team!
